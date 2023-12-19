@@ -6,17 +6,18 @@ import time
 
 from math import radians, sin, cos
 
-ROOT = os.path.expandvars("$LEGO_PATH")
+### Environment Variables
+
+#ROOT = os.environ["LEGO_PATH"]
+ROOT = "/home/taben/source/repos/uni/proj"
+print(ROOT)
 PWD = os.path.join(ROOT, "image_gen")
 COMMON_BRICKS_PATH = os.path.join(PWD, "2000bricks.txt")
 
 LDRAW_DIR = os.path.join(ROOT, "ldraw/parts")
-OUTPUT_DIR = os.path.join(PWD, "output/v2")
-BACKGROUNDS_DIR = os.path.join(PWD, "backgrounds")
+OUTPUT_DIR = os.path.join(PWD, "output")
 
-PART_COUNT = 10
-IMG_PER_BRICK = 200
-image_resolution = (600, 600)
+image_resolution = (300, 300)
 
 def get_time_ms():
     return time.time() * 1000
@@ -24,64 +25,36 @@ def get_time_ms():
 def get_time_s():
     return time.time()
 
-# Reads top 2000 lego bricks set
-# filters models without correspoding .dat model
-# returns top 1000 or arg passed
-def get_parts(num=1000):
-    print("Using ", PART_COUNT, "bricks from", COMMON_BRICKS_PATH)
-    with open(COMMON_BRICKS_PATH, 'r') as f:
-        lines = f.readlines()
-    lines = [line.strip() for line in lines]
-
-    ldraw_files = os.listdir(LDRAW_DIR)
-    file_names = [os.path.splitext(file)[0] for file in ldraw_files]
-
-    valid_parts = [line for idx,line in enumerate(lines) if line in file_names]
-    valid_parts = valid_parts[:num]
-
-    print("Total top bricks:", klen(lines))
-    print("Total ldraw:", len(ldraw_files))
-    print("Total after cross check:", len(valid_parts))
-    return valid_parts
-
-# Reads top 2000 lego bricks set
-# returns list of bricks without .dat models
-def get_missing():
-    # Open the text file and read all the lines into a list
-    with open(COMMON_BRICKS_PATH, 'r') as f:
-        lines = f.readlines()
-
-    # Strip newline characters from each line in the list
-    lines = [line.strip() for line in lines]
-
-    # Create a new list with the extension removed from each file name
-    file_names = [os.path.splitext(file)[0] for file in os.listdir(LDRAW_DIR)]
-
-    # Create new list with elements in lines that are not in file_names
-    missing_parts = [(idx, line) for idx,line in enumerate(lines) if line not in file_names]
-
-    print("Total missing:", len(missing_parts))
-    return missing_parts
 
 # convert angles
 def deg_to_rad(angle):
     return angle / 180 * 3.14159
 
-# BROKEN
-def setup_background():
-    BACKGROUNDS_DIR = os.listdir(BACKGROUNDS_DIR)
-    bg_image_file = r.choice(BACKGROUNDS_DIR)
-    bg_image = bpy.data.images.load(BACKGROUNDS_DIR + "/" + bg_image_file)
-    print(bg_image_file)
+def get_next_version(dir):
+    folders = [folder for folder in os.listdir(dir) if os.path.isdir(os.path.join(dir, folder))]
+    
+    if len(folders) == 0:
+        print("WARNING: no previous version found, assuming v1")
+        return "v1"
+    
+    highest_number = 0
+    for folder in folders:
+        try:
+            number = int(folder[1:])  # Convert the remaining characters to an integer
+            if number > highest_number:
+                highest_number = number
+        except ValueError:
+            pass
+    return os.path.join(dir, "v" + str(highest_number + 1))
 
-    bpy.context.scene.camera.data.show_background_images = True
-    bg = bpy.context.scene.camera.data.background_images.new()
-    bg.image = bg_image
+
+
+### RENDERER
 
 # Initialise 
 def setup_eevee():
     bpy.context.scene.render.engine = 'BLENDER_EEVEE'
-    bpy.context.scene.rener.resolution_x = image_resolution[0]
+    bpy.context.scene.render.resolution_x = image_resolution[0]
     bpy.context.scene.render.resolution_y = image_resolution[1]
 
 # Initialise environment to use cycles correctly and quickly
@@ -103,16 +76,9 @@ def render(filepath):
     bpy.context.scene.render.filepath = filepath
     bpy.ops.render.render(write_still=True)
 
-# creates plane object at specified transform
-def create_plane(pos, rot, scl):
-    bpy.ops.mesh.primitive_plane_add(size=1)
-    # Get a reference to the newly created plane object
-    plane = bpy.context.active_object
-    # Set the position, rotation, and scale of the plane
-    plane.location = pos
-    plane.rotation_euler = rot
-    plane.scale = scl
-    return plane
+
+
+### LIGHTING
 
 def create_point_light(pos, strength):
     bpy.ops.object.light_add(type="POINT", location=pos)
@@ -131,6 +97,50 @@ def set_position_polar_coords(obj, radius, angle_h, angle_v):
     # light_position = (4, 1, 5.9)
     return (x, y, z)
 
+def setup_lights():
+    MAX_LIGHTS = 3 
+    MIN_STRENGTH = 500
+    MAX_STRENGTH = 2000
+    MIN_RADIUS = 3
+    MAX_RADIUS = 10
+
+    # lighting
+    clear_by_type("LIGHT")
+    clear_lights()
+    for l in range(r.randint(1, MAX_LIGHTS)):
+        strength = r.randint(MIN_STRENGTH, MAX_STRENGTH)
+        light = create_point_light((0, 0, 0), strength)
+        radius = r.randint(MIN_RADIUS, MAX_RADIUS)
+        angle_h = radians(360 * r.random())
+        angle_v = radians(90 * r.random())
+        set_position_polar_coords(light, radius, angle_h, angle_v)    
+
+
+
+### OBJ
+
+# Reads top 2000 lego bricks set
+# filters models without correspoding .dat model
+# returns top 1000 or arg passed
+def get_parts(bricks_path, start, count):
+    print("GET PARTS")
+    print("Using ", count, "bricks from", COMMON_BRICKS_PATH)
+    with open(COMMON_BRICKS_PATH, 'r') as f:
+        lines = f.readlines()
+    lines = [line.strip() for line in lines]
+
+    ldraw_files = os.listdir(LDRAW_DIR)
+    file_names = [os.path.splitext(file)[0] for file in ldraw_files]
+
+    valid_parts = [line for idx,line in enumerate(lines) if line in file_names]
+    valid_parts = valid_parts[start:start+count]
+
+    print("Total top bricks:", len(lines))
+    print("Total ldraw:", len(ldraw_files))
+    print("Total after cross check:", len(valid_parts))
+    return valid_parts
+
+
 # import .dat model by part id, simple look up
 # MORE HANDLING NEEDED
 def import_lego_part(part_id):
@@ -140,7 +150,7 @@ def import_lego_part(part_id):
                                         useLogoStuds=True,
                                         instanceStuds=False,
                                         importCameras=False,
-                                        cameraBorderPercentage=20.0,
+                                        cameraBorderPercentage=30.0,
                                         addEnvironment=False,
                                         numberNodes=False,
                                         flatten=False,
@@ -148,6 +158,27 @@ def import_lego_part(part_id):
                                         smoothParts=True,
                                         curvedWalls=True)
     return bpy.context.selected_objects[0]
+
+# set object's position
+def set_position(obj, x, y, z):
+    obj.location = (x, y, z)
+# set object's rotation
+def set_rotation(obj, x, y, z):
+    obj.rotation_euler = (x, y, z)
+# set object's scale
+def set_scale(obj, x, y, z):
+    obj.scale = (x, y, z)
+
+def setup_part(part):
+    # Randomize the rotation of the part
+    x = r.uniform(0, 2*3.14159)
+    y = r.uniform(0, 2*3.14159)
+    z = r.uniform(0, 2*3.14159)
+    set_rotation(part, x, y, z)
+
+
+
+### MATERIAL
 
 # create new dffuse material of specified r,g,b and set as object material
 def set_material(obj, mat):
@@ -166,15 +197,18 @@ def create_material(name, diffuse, metallic, specular, roughness):
     mat.roughness = roughness
     return mat
 
-# set object's position
-def set_position(obj, x, y, z):
-    obj.location = (x, y, z)
-# set object's rotation
-def set_rotation(obj, x, y, z):
-    obj.rotation_euler = (x, y, z)
-# set object's scale
-def set_scale(obj, x, y, z):
-    obj.scale = (x, y, z)
+def setup_material(part):
+    # Randomize the material color of the part
+    diff = (r.uniform(0.0, 1.0), r.uniform(0.0, 1.0), r.uniform(0.0, 1.0), 1.0)
+    metallic = r.uniform(0.0, 1.0)
+    specular = r.uniform(0.0, 1.0)
+    roughness = r.uniform(0.0, 1.0)
+    mat = create_material("auto_mat", diff, metallic, specular, roughness)
+    set_material(part, mat)
+
+
+
+### ENGINE CLEAN UP
 
 # remove all objects of type from scene
 # (MESH, LIGHT, CAMERA)
@@ -185,132 +219,93 @@ def clear_by_type(type="MESH"):
             bpy.data.objects.remove(obj, do_unlink=True)
             
 def clear_lights():
-    print(bpy.data.lights)
-
-# # create new BSDF material
-# def create_material():
-#     # Set up a new material
-#     material = bpy.data.materials.new(name="MyMaterial")time_ms
-#     material.use_nodes = True
-
-#     # Get the material's node tree
-#     tree = material.node_tree
-
-#     # Clear out the default nodes
-#     for node in tree.nodes:
-#         tree.nodes.remove(node)
-
-#     # Add a new Principled BSDF node
-#     bsdf_node = tree.nodes.new(type='ShaderNodeBsdfPrincipled')
-#     bsdf_node.location = (0, 0)
-
-#     # Set the color of the material
-#     bsdf_node.inputs['Base Color'].default_value = (1, 0, 0, 1)
-
-#     # Add an output node
-#     output_node = tree.nodes.new(type='ShaderNodeOutputMaterial')
-#     output_node.location = (400, 0)
-
-#     # Connect the nodes
-#     tree.links.new(bsdf_node.outputs['BSDF'], output_node.inputs['Surface'])
-
-#     # Assign the material to the active object
-#     bpy.context.object.active_material = material
+    print("CLEAR LIGHTS: ", bpy.data.lights)
 
 def object_test(obj):
     print(obj.type)
     for child in obj.children:
         object_test(child)
 
-def run(bricks_file=COMMON_BRICKS_PATH, part_count=10, output_dir=OUTPUT_DIR, img_per_brick=20):
-    global OUTPUT_DIR, COMMON_BRICKS_PATH, PART_COUNT, IMAGES_PER_BRICK
-    OUTPUT_DIR = output_dir
-    COMMON_BRICKS_PATH = bricks_file
-    IMG_PER_BRICK = img_per_brick
-    PART_COUNT = part_count
-    time_start = get_time_s()
+### WALL PLANES
 
+# creates plane object at specified transform
+def create_plane(pos, rot, scl):
+    bpy.ops.mesh.primitive_plane_add(size=1)
+    # Get a reference to the newly created plane object
+    plane = bpy.context.active_object
+    # Set the position, rotation, and scale of the plane
+    plane.location = pos
+    plane.rotation_euler = rot
+    plane.scale = scl
+    return plane
+
+def setup_planes():
     # create planes for ambient light reflection
-    NUM_PLANES = 2
-    positions = [(7.5, 0, 0), (0, -7.5, 0)]
-    rotations = [(0, deg_to_rad(90), 0), (deg_to_rad(90), 0, 0)]
-    scales = [(15, 15, 1), (15, 15, 1)]
+    PLANES = [ ((7.5, 0, 0), (0, deg_to_rad(90), 0), (15, 15, 1)),
+                ((0, -7.5, 0), (deg_to_rad(90), 0, 0), (15, 15, 1)) ]
+    for p in PLANES:
+       create_plane(p[0], p[1], p[2])
 
-    for i in range(NUM_PLANES):
-       create_plane(positions[i], rotations[i], scales[i])
+
+
+### Main Function
+
+def run(bricks_file, part_start, part_count, output_dir, img_per_brick):
     
-    parts_ids = get_parts(part_count)
+    os.makedirs(output_dir)
+
+    time_start = get_time_s()
+    setup_planes()
+
+    parts_ids = get_parts(bricks_file, part_start, part_count)
     
-    MAX_LIGHTS = 3 
-    MIN_STRENGTH = 500
-    MAX_STRENGTH = 2000
-    MIN_RADIUS = 3
-    MAX_RADIUS = 10
+    # set renderer
+    setup_eevee()
     
     time_prev = get_time_s()
     print("setup finished @ ", time_prev - time_start)
     for part_id in parts_ids:
         
-        clear_by_type("MESH")
-        print("import part:", part_id)
-        part = import_lego_part(part_id)
-        # set renderer
-        setup_eevee()
+        brick_dir = os.path.join(output_dir, str(part_id))
+        os.makedirs(brick_dir)
         
+        # clean up materials
         for material in bpy.data.materials:
             material.user_clear()
             bpy.data.materials.remove(material)
-        
+        # clean up lighting
         for light in bpy.data.lights:
             light.user_clear()
             bpy.data.lights.remove(light)
 
-        
-        for i in range(IMG_PER_BRICK):
+        # create mesh
+        clear_by_type("MESH")
+        print("import part:", part_id)
+        part = import_lego_part(part_id)
+        for i in range(img_per_brick):
             
-            # lighting
-            clear_by_type("LIGHT")
-            clear_lights()
-            for l in range(r.randint(1, MAX_LIGHTS)):
-                strength = r.randint(MIN_STRENGTH, MAX_STRENGTH)
-                light = create_point_light((0, 0, 0), strength)
-                radius = r.randint(MIN_RADIUS, MAX_RADIUS)
-                angle_h = radians(360 * r.random())
-                angle_v = radians(90 * r.random())
-                set_position_polar_coords(light, radius, angle_h, angle_v)
+            # create & setup lights
+            setup_lights()
+            setup_part(part)
 
-            # Randomize the rotation of the part
-            x = r.uniform(0, 2*3.14159)
-            y = r.uniform(0, 2*3.14159)
-            z = r.uniform(0, 2*3.14159)
-            set_rotation(part, x, y, z)
-            
             part.select_set(state=True)
             bpy.context.view_layer.objects.active = part
             bpy.ops.view3d.camera_to_view_selected()
 
-            # Randomize the material color of the part
-            diff = (r.uniform(0.0, 1.0), r.uniform(0.0, 1.0), r.uniform(0.0, 1.0), 1.0)
-            metallic = r.uniform(0.0, 1.0)
-            specular = r.uniform(0.0, 1.0)
-            roughness = r.uniform(0.0, 1.0)
-            mat = create_material("auto_mat", diff, metallic, specular, roughness)
-            set_material(part, mat)
+            setup_material(part)
 
-            output_path = OUTPUT_DIR + "/" + part_id + "_" + str(i) + ".png"
+            # render
+            output_path = brick_dir + "/" + part_id + "_" + str(i) + ".png"
             print("Render ", str(part_id) + ".dat (", i, "):", output_path)
             render(output_path)
             time_tmp = get_time_s()
             print("finished render @ ", time_tmp - time_prev)
             time_prev = time_tmp
     
-    print("All ", len(parts_ids) * IMG_PER_BRICK, " images rendered @ ", get_time_s() - time_start)
+    print("All ", len(parts_ids) * img_per_brick, " images rendered @ ", get_time_s() - time_start)
 
 if __name__ == "__main__":
-#    print("delete test")
-#    obj = bpy.context.selected_objects[0]
-#    object_test(obj)
-#    
-#if __name__ == "wah":
-    run()
-    get_parts(2000)
+    next_dir = get_next_version(OUTPUT_DIR)
+    print(next_dir)
+    run(bricks_file=COMMON_BRICKS_PATH, part_start=0, part_count=1, output_dir=next_dir, img_per_brick=100)
+    # get_parts(2000)
