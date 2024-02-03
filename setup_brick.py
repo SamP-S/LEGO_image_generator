@@ -3,6 +3,7 @@ import random as r
 import sys
 import os
 import time
+import csv
 
 from math import radians, sin, cos
 
@@ -10,16 +11,15 @@ from math import radians, sin, cos
 
 #ROOT = os.environ["LEGO_PATH"]
 ROOT = "/home/taben/source/repos/proj"
-print(ROOT)
+
 PWD = os.path.join(ROOT, "image_gen")
-COMMON_BRICKS_PATH = os.path.join(PWD, "2000bricks.txt")
+COMMON_BRICKS_PATH = os.path.join(PWD, "100bricks.txt")
 
 LDRAW_ROOT_DIR = os.path.join(ROOT, "ldraw")
 LDRAW_PARTS_DIR = os.path.join(LDRAW_ROOT_DIR, "parts")
-OUTPUT_DIR = os.path.join(PWD, "output")
+DATA_DIR = os.path.join(PWD, "data")
 
-print(LDRAW_PARTS_DIR)
-print(OUTPUT_DIR)
+
 
 image_resolution = (300, 300)
 
@@ -120,27 +120,38 @@ def setup_lights():
 
 ### OBJ
 
-# Reads top 2000 lego bricks set
-# filters models without correspoding .dat model
-# returns top 1000 or arg passed
-def get_parts(bricks_path, start, count):
-    print("GET PARTS")
-    print("Using ", count, "bricks from", COMMON_BRICKS_PATH)
-    with open(COMMON_BRICKS_PATH, 'r') as f:
-        lines = f.readlines()
-    lines = [line.strip() for line in lines]
+# open csv of brick ids
+def get_parts(bricks_path):
+    print("Using Bricks File:", bricks_path)
+    arr = []
+    with open(bricks_path) as f:
+        reader = csv.reader(f)
+        for row in reader:
+            arr.append(row[1].strip())
+    return arr
 
-    ldraw_files = os.listdir(LDRAW_PARTS_DIR)
+# get ldraw supported parts
+def get_ldraw_parts(ldraw_dir):
+    ldraw_files = os.listdir(ldraw_dir)
     file_names = [os.path.splitext(file)[0] for file in ldraw_files]
+    return file_names
 
-    valid_parts = [line for idx,line in enumerate(lines) if line in file_names]
-    valid_parts = valid_parts[start:start+count]
-
-    print("Total top bricks:", len(lines))
-    print("Total ldraw:", len(ldraw_files))
-    print("Total after cross check:", len(valid_parts))
-    return valid_parts
-
+# compare and prints stats
+def get_parts_and_check(bricks_path, ldraw_dir):
+    print("Brick File:", bricks_path)
+    print("LDraw Dir:", ldraw_dir)
+    parts = get_parts(bricks_path)
+    ldraw_parts = get_ldraw_parts(ldraw_dir)
+    valid_parts = [line for idx,line in enumerate(parts) if line in ldraw_parts]
+    invalid_parts = [line for idx,line in enumerate(parts) if line not in ldraw_parts]
+    print(parts[:15])
+    print(ldraw_parts[:15])
+    print("Total parts:", len(parts))
+    print("Total ldraw parts:", len(ldraw_parts))
+    print("Total valid:", len(valid_parts))
+    print("Total invalid:", len(invalid_parts))
+    return valid_parts, invalid_parts
+    
 
 # import .dat model by part id, simple look up
 # MORE HANDLING NEEDED
@@ -182,31 +193,41 @@ def setup_part(part):
 
 ### MATERIAL
 
-# create new dffuse material of specified r,g,b and set as object material
-def set_material(obj, mat):
-    if obj.data == None:
-        for child in obj.children:
-            set_material(child, mat)
-    else:
-        obj.data.materials[0] = mat
-
 # found on http://wiki.blender.org/index.php/Dev:2.5/Py/Scripts/Cookbook/Code_snippets/Materials_and_textures
-def create_material(name, diffuse, metallic, specular, roughness):
+# Create new material 
+def create_material(name):
     mat = bpy.data.materials.new(name)
+    set_random_material_properties(mat)
+    return mat
+
+def clear_materials():
+    for material in bpy.data.materials:
+        material.user_clear()
+        bpy.data.materials.remove(material)
+
+# Set material properties
+def set_material_properties(mat, diffuse, metallic, specular, roughness):
     mat.diffuse_color = diffuse
     mat.metallic = metallic
     mat.specular_intensity = specular
     mat.roughness = roughness
     return mat
 
-def setup_material(part):
-    # Randomize the material color of the part
+# Set random colour/settings of material
+def set_random_material_properties(mat):
     diff = (r.uniform(0.0, 1.0), r.uniform(0.0, 1.0), r.uniform(0.0, 1.0), 1.0)
     metallic = r.uniform(0.0, 1.0)
     specular = r.uniform(0.0, 1.0)
     roughness = r.uniform(0.0, 1.0)
-    mat = create_material("auto_mat", diff, metallic, specular, roughness)
-    set_material(part, mat)
+    return set_material_properties(mat, diff, metallic, specular, roughness)
+
+# create new dffuse material of specified r,g,b and set as object material
+def set_object_material(obj, mat):
+    if obj.data == None:
+        for child in obj.children:
+            set_object_material(child, mat)
+    else:
+        obj.data.materials[0] = mat
 
 
 
@@ -233,15 +254,6 @@ def clear_lights():
         light.user_clear()
         bpy.data.lights.remove(light)
 
-def clear_materials():
-    for material in bpy.data.materials:
-        material.user_clear()
-        bpy.data.materials.remove(material)
-
-def object_test(obj):
-    print(obj.type)
-    for child in obj.children:
-        object_test(child)
 
 ### WALL PLANES
 
@@ -264,65 +276,74 @@ def setup_planes():
        create_plane(p[0], p[1], p[2])
 
 
-
 ### Main Function
+       
+def render_brick(brick_id, output_dir, img_per_brick):
+    brick_dir = os.path.join(output_dir, str(brick_id))
+    os.makedirs(brick_dir)
+    time_brick_start = time.time()
 
-def run(bricks_file, part_start, part_count, output_dir, img_per_brick):
+    # clear objects in the scene
+    pop_by_type("EMPTY")
+    pop_by_type("MESH")
+    pop_by_type("LIGHT")
     
-    os.makedirs(output_dir)
+    # clear all data in blender
+    clear_meshes()
+    clear_materials()
+    clear_lights()
 
-    time_start = get_time_s()
+    # setup iteration independant scene
+    print("import part:", brick_id)
+    part = import_lego_part(brick_id)
     setup_planes()
+    mat = create_material("new_mat")
+    
+    # iterate per brick
+    for i in range(img_per_brick):
+        # timing
+        time_itr_start = time.time()
 
-    parts_ids = get_parts(bricks_file, part_start, part_count)
+        # setup iteration dependant scene
+        pop_by_type("LIGHT")
+        clear_lights()
+        setup_lights()
+        setup_part(part)
+        set_random_material_properties(mat)
+        set_object_material(part, mat)
+        part.select_set(state=True)
+        bpy.context.view_layer.objects.active = part
+        bpy.ops.view3d.camera_to_view_selected()
+
+        # render to png
+        output_path = brick_dir + "/" + brick_id + "_" + str(i) + ".png"
+        print("Render ", str(brick_id) + ".dat (", i, ") [",  time.time() - time_itr_start, "]:", output_path)
+        render(output_path)
+
+    # time total for brick
+    print("Finished Brick:", brick_id, "@", time.time() - time_brick_start, "s")
+
+
+def run(part_ids, output_dir, img_per_brick):    
+    os.makedirs(output_dir)
+    time_start = get_time_s()
     
     # set renderer
     setup_eevee()
     
     time_prev = get_time_s()
     print("setup finished @ ", time_prev - time_start)
-    for part_id in parts_ids:
+    for part_id in part_ids:
+        render_brick(part_id, output_dir, img_per_brick)
         
-        brick_dir = os.path.join(output_dir, str(part_id))
-        os.makedirs(brick_dir)
-        
-        # create mesh
-        pop_by_type("EMPTY")
-        pop_by_type("MESH")
-        clear_meshes()
-        print("import part:", part_id)
-        part = import_lego_part(part_id)
-        
-        for i in range(img_per_brick):
-            
-            # create & setup lights
-            pop_by_type("LIGHT")
-            clear_lights()
-            setup_lights()
-            
-            # setup part
-            setup_part(part)
-
-            part.select_set(state=True)
-            bpy.context.view_layer.objects.active = part
-            bpy.ops.view3d.camera_to_view_selected()
-
-            # create & setup material
-            clear_materials()
-            setup_material(part)
-
-            # render
-            output_path = brick_dir + "/" + part_id + "_" + str(i) + ".png"
-            print("Render ", str(part_id) + ".dat (", i, "):", output_path)
-            render(output_path)
-            time_tmp = get_time_s()
-            print("finished render @ ", time_tmp - time_prev)
-            time_prev = time_tmp
-    
-    print("All ", len(parts_ids) * img_per_brick, " images rendered @ ", get_time_s() - time_start)
+    print("All ", len(part_ids) * img_per_brick, " images rendered @ ", get_time_s() - time_start)
 
 if __name__ == "__main__":
-    next_dir = get_next_version(OUTPUT_DIR)
-    print(next_dir)
-    run(bricks_file=COMMON_BRICKS_PATH, part_start=0, part_count=10, output_dir=next_dir, img_per_brick=1)
-    # get_parts(2000)
+    v_dir = get_next_version(DATA_DIR)
+    print("Dataset Version Dir:", v_dir)
+    
+    valid_parts, invalid_parts = get_parts_and_check(COMMON_BRICKS_PATH, LDRAW_PARTS_DIR)
+    print("Valid:", valid_parts)
+    print("Invalid:", invalid_parts)
+
+    run(part_ids=valid_parts, output_dir=v_dir, img_per_brick=100)
