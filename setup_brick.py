@@ -9,13 +9,17 @@ from math import radians, sin, cos
 ### Environment Variables
 
 #ROOT = os.environ["LEGO_PATH"]
-ROOT = "/home/taben/source/repos/uni/proj"
+ROOT = "/home/taben/source/repos/proj"
 print(ROOT)
 PWD = os.path.join(ROOT, "image_gen")
 COMMON_BRICKS_PATH = os.path.join(PWD, "2000bricks.txt")
 
-LDRAW_DIR = os.path.join(ROOT, "ldraw/parts")
+LDRAW_ROOT_DIR = os.path.join(ROOT, "ldraw")
+LDRAW_PARTS_DIR = os.path.join(LDRAW_ROOT_DIR, "parts")
 OUTPUT_DIR = os.path.join(PWD, "output")
+
+print(LDRAW_PARTS_DIR)
+print(OUTPUT_DIR)
 
 image_resolution = (300, 300)
 
@@ -104,9 +108,6 @@ def setup_lights():
     MIN_RADIUS = 3
     MAX_RADIUS = 10
 
-    # lighting
-    clear_by_type("LIGHT")
-    clear_lights()
     for l in range(r.randint(1, MAX_LIGHTS)):
         strength = r.randint(MIN_STRENGTH, MAX_STRENGTH)
         light = create_point_light((0, 0, 0), strength)
@@ -129,7 +130,7 @@ def get_parts(bricks_path, start, count):
         lines = f.readlines()
     lines = [line.strip() for line in lines]
 
-    ldraw_files = os.listdir(LDRAW_DIR)
+    ldraw_files = os.listdir(LDRAW_PARTS_DIR)
     file_names = [os.path.splitext(file)[0] for file in ldraw_files]
 
     valid_parts = [line for idx,line in enumerate(lines) if line in file_names]
@@ -144,9 +145,10 @@ def get_parts(bricks_path, start, count):
 # import .dat model by part id, simple look up
 # MORE HANDLING NEEDED
 def import_lego_part(part_id):
-    part_file = LDRAW_DIR + "/" + str(part_id) + ".dat"
+    part_file = LDRAW_PARTS_DIR + "/" + str(part_id) + ".dat"
     bpy.ops.import_scene.importldraw(   filepath=part_file,
-                                        filter_glob="*.dat", 
+                                        filter_glob="*.dat",
+                                        ldrawPath=LDRAW_ROOT_DIR,
                                         useLogoStuds=True,
                                         instanceStuds=False,
                                         importCameras=False,
@@ -208,18 +210,33 @@ def setup_material(part):
 
 
 
-### ENGINE CLEAN UP
-
 # remove all objects of type from scene
 # (MESH, LIGHT, CAMERA)
-def clear_by_type(type="MESH"):
+def pop_by_type(type="MESH"):
     objects = bpy.context.scene.objects
     for obj in objects:
         if obj.type == type:
             bpy.data.objects.remove(obj, do_unlink=True)
+        else:
+            print(obj.type)
+
+
+### Cache clean up
+# remove held assets
+def clear_meshes():
+    for mesh in bpy.data.meshes:
+        mesh.user_clear()
+        bpy.data.meshes.remove(mesh)
             
 def clear_lights():
-    print("CLEAR LIGHTS: ", bpy.data.lights)
+    for light in bpy.data.lights:
+        light.user_clear()
+        bpy.data.lights.remove(light)
+
+def clear_materials():
+    for material in bpy.data.materials:
+        material.user_clear()
+        bpy.data.materials.remove(material)
 
 def object_test(obj):
     print(obj.type)
@@ -269,29 +286,29 @@ def run(bricks_file, part_start, part_count, output_dir, img_per_brick):
         brick_dir = os.path.join(output_dir, str(part_id))
         os.makedirs(brick_dir)
         
-        # clean up materials
-        for material in bpy.data.materials:
-            material.user_clear()
-            bpy.data.materials.remove(material)
-        # clean up lighting
-        for light in bpy.data.lights:
-            light.user_clear()
-            bpy.data.lights.remove(light)
-
         # create mesh
-        clear_by_type("MESH")
+        pop_by_type("EMPTY")
+        pop_by_type("MESH")
+        clear_meshes()
         print("import part:", part_id)
         part = import_lego_part(part_id)
+        
         for i in range(img_per_brick):
             
             # create & setup lights
+            pop_by_type("LIGHT")
+            clear_lights()
             setup_lights()
+            
+            # setup part
             setup_part(part)
 
             part.select_set(state=True)
             bpy.context.view_layer.objects.active = part
             bpy.ops.view3d.camera_to_view_selected()
 
+            # create & setup material
+            clear_materials()
             setup_material(part)
 
             # render
@@ -307,5 +324,5 @@ def run(bricks_file, part_start, part_count, output_dir, img_per_brick):
 if __name__ == "__main__":
     next_dir = get_next_version(OUTPUT_DIR)
     print(next_dir)
-    run(bricks_file=COMMON_BRICKS_PATH, part_start=0, part_count=1, output_dir=next_dir, img_per_brick=100)
+    run(bricks_file=COMMON_BRICKS_PATH, part_start=0, part_count=10, output_dir=next_dir, img_per_brick=1)
     # get_parts(2000)
