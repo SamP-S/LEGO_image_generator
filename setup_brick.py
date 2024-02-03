@@ -238,9 +238,7 @@ def pop_by_type(type="MESH"):
     for obj in objects:
         if obj.type == type:
             bpy.data.objects.remove(obj, do_unlink=True)
-        else:
-            print(obj.type)
-
+            
 
 ### Cache clean up
 # remove held assets
@@ -317,8 +315,8 @@ def render_brick(brick_id, output_dir, img_per_brick):
 
         # render to png
         output_path = brick_dir + "/" + brick_id + "_" + str(i) + ".png"
-        print("Render ", str(brick_id) + ".dat (", i, ") [",  time.time() - time_itr_start, "]:", output_path)
         render(output_path)
+        print("Render ", str(brick_id) + ".dat (", i, ") [",  time.time() - time_itr_start, "]:", output_path)
 
     # time total for brick
     print("Finished Brick:", brick_id, "@", time.time() - time_brick_start, "s")
