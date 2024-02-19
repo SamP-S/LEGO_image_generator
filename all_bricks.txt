@@ -98,4 +98,43 @@
 111, 61409, Slope 18┬░ 2 x 1 x 2/3 with 4 Slots
 113, 6541, Technic Brick 1 x 1 with Hole
 114, 3032, Plate 4 x 6
-
+115, 3673, Technic Pin without Friction Ridges Lengthwise
+117, 48729, Bar 1L with Clip [Cut Edges and One Side Hole]
+118, 32523, Technic Beam 1 x 3 Thick
+119, 36840, Bracket 1 x 1 – 1 x 1 Inverted
+120, 62462, Technic Pin Connector Round [Slotted]
+121, 11476, Plate Special 1 x 2 with Clip Horizontal on Side
+122, 32803, Slope Curved 2 x 2 Inverted
+123, 30374, Bar 4L (Lightsaber Blade / Wand)
+124, 60483, Technic Beam 1 x 2 Thick with Pin Hole and Axle Hole
+125, 60592, Window 1 x 2 x 2 Flat Front
+126, 15100, Technic Pin Connector Hub with 1 Pin with Friction Ridges Lengthwise
+127, 32316, Technic Beam 1 x 5 Thick
+128, 14769, 2×2 Tile, Round
+129, 2540, Plate Special 1 x 2 Side Handle [Free Ends]
+130, 3832, 2×10 Plate
+131, 32140, Technic Beam 2 x 4 L-Shape Thick
+132, 23443, Bar Holder with Hole and Bar Handle
+133, 11090, Bar Holder with Clip
+134, 29120, Slope Curved 2 x 1 with Stud Notch Left
+135, 32000, Technic Brick 1 x 2 [2 Holes]
+136, 60479, 1×12 Plate
+137, 14719, 2×2 Tile, Corner
+138, 32524, Technic Beam 1 x 7 Thick
+139, 6536, Technic Axle and Pin Connector Perpendicular
+140, 11212, Plate 3 x 3
+141, 2456, 2×6 Brick
+142, 4286, Slope 33┬░ 3 x 1
+143, 61678, Slope Curved 4 x 1 No Studs [Stud Holder with Symmetric Ridges]
+144, 27263, Tile Special 2 x 2 Corner with Cut Corner – Facet
+145, 29119, Slope Curved 2 x 1 with Stud Notch Right
+146, 4865, Panel 1 x 2 x 1 [Square Corners]
+147, 60470, Plate Special 1 x 2 with Clips Horizontal [Open O Clips]
+148, 18677, Plate Special 1 x 2 with Pin Hole
+149, 41677, Technic Beam 1 x 2 Thin
+150, 2429c01, Hinge Plate 1 x 4 Swivel Top / Base – Hollow Clip [Complete Assembly]
+151, 4740, 2×2 Dish
+152, 60601, Glass for Window 1 x 2 x 2 Flat
+153, 32526, Technic Beam 3 x 5 L-Shape Thick
+154, 36841, Bracket 1 x 1 – 1 x 1
+155, 18651, Technic Axle Pin 3L with Friction Ridges Lengthwise and 2L Axle
