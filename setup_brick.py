@@ -9,7 +9,8 @@ from math import radians, sin, cos
 
 ### Environment Variables
 
-PWD = os.getcwd()
+PWD = os.path.dirname(bpy.context.space_data.text.filepath)
+
 COMMON_BRICKS_PATH = os.path.join(PWD, "20bricks.txt")
 
 LDRAW_ROOT_DIR = os.path.join(PWD, "ldraw")
@@ -339,4 +340,7 @@ if __name__ == "__main__":
     print("Valid:", valid_parts)
     print("Invalid:", invalid_parts)
 
-    run(part_ids=valid_parts, output_dir=v_dir, img_per_brick=100)
+    NUM_PARTS = 10
+    parts_subset = valid_parts[:NUM_PARTS]
+
+    run(part_ids=parts_subset, output_dir=v_dir, img_per_brick=40)
