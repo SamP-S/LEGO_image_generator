@@ -9,17 +9,12 @@ from math import radians, sin, cos
 
 ### Environment Variables
 
-#ROOT = os.environ["LEGO_PATH"]
-ROOT = "/home/taben/source/repos/proj"
-
-PWD = os.path.join(ROOT, "image_gen")
+PWD = os.getcwd()
 COMMON_BRICKS_PATH = os.path.join(PWD, "20bricks.txt")
 
-LDRAW_ROOT_DIR = os.path.join(ROOT, "ldraw")
+LDRAW_ROOT_DIR = os.path.join(PWD, "ldraw")
 LDRAW_PARTS_DIR = os.path.join(LDRAW_ROOT_DIR, "parts")
 DATA_DIR = os.path.join(PWD, "data")
-
-
 
 image_resolution = (300, 300)
 
@@ -39,7 +34,7 @@ def get_next_version(dir):
     
     if len(folders) == 0:
         print("WARNING: no previous version found, assuming v1")
-        return "v1"
+        return os.path.join(dir, "v1")
     
     highest_number = 0
     for folder in folders:
