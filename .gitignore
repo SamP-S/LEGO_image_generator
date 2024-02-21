@@ -1,7 +1,8 @@
 # Custom Dirs
-output
-backgrounds
-data
+output/
+backgrounds/
+data/
+ldraw/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
