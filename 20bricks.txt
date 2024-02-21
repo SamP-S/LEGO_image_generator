@@ -1,0 +1,20 @@
+1, 4073, 1×1 Plate, Round
+2, 3023, 1×2 Plate
+3, 98138, 1×1 Tile, Round
+4, 3024, 1×1 Plate
+5, 2780, Technic Pin with Friction Ridges Lengthwise and Center Slots
+6, 54200, 1×1 Slope 30° (Cheese)
+7, 3069b, 1×2 Tile
+8, 3710, 1×4 Plate
+10, 3070b, 1×1 Tile
+11, 3004, 1×2 Brick
+12, 3005, 1×1 Brick
+13, 3020, 2×4 Plate
+14, 3022, 2×2 Plate
+15, 15573, 1×2 Jumper
+16, 6558, Technic Pin Long with Friction Ridges Lengthwise, 1 Center Slot
+17, 3623, 1×3 Plate
+18, 3021, 2×3 Plate
+19, 3666, 1×6 Plate
+20, 85984, 1×2 Slope 30° (Double Cheese)
+21, 85861, 1×1 Plate, Round w/ hole

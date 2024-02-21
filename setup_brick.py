@@ -13,7 +13,7 @@ from math import radians, sin, cos
 ROOT = "/home/taben/source/repos/proj"
 
 PWD = os.path.join(ROOT, "image_gen")
-COMMON_BRICKS_PATH = os.path.join(PWD, "100bricks.txt")
+COMMON_BRICKS_PATH = os.path.join(PWD, "20bricks.txt")
 
 LDRAW_ROOT_DIR = os.path.join(ROOT, "ldraw")
 LDRAW_PARTS_DIR = os.path.join(LDRAW_ROOT_DIR, "parts")
