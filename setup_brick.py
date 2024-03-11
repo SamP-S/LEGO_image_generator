@@ -2,39 +2,19 @@ import bpy
 import random as r
 import sys
 import os
-import time
+from time import time
 import csv
-
-from math import radians, sin, cos
-
-### Environment Variables
-
-# PWD for Blender w/ GUI
-try:
-    PWD = os.path.dirname(bpy.context.space_data.text.filepath)
-except AttributeError as e:
-    PWD = os.getcwd()
-
-COMMON_BRICKS_PATH = os.path.join(PWD, "20bricks.txt")
-
-LDRAW_ROOT_DIR = os.path.join(PWD, "ldraw")
-LDRAW_PARTS_DIR = os.path.join(LDRAW_ROOT_DIR, "parts")
-DATA_DIR = os.path.join(PWD, "data")
-
-image_resolution = (300, 300)
-
-def get_time_ms():
-    return time.time() * 1000
-
-def get_time_s():
-    return time.time()
+import configparser
+from math import radians, sin, cos, pi
 
 
 # convert angles
 def deg_to_rad(angle):
-    return angle / 180 * 3.14159
+    return angle / 180 * pi
 
 def get_next_version(dir):
+    if not os.path.exists(dir):
+        os.mkdir(dir)
     folders = [folder for folder in os.listdir(dir) if os.path.isdir(os.path.join(dir, folder))]
     
     if len(folders) == 0:
@@ -49,27 +29,31 @@ def get_next_version(dir):
                 highest_number = number
         except ValueError:
             pass
-    return os.path.join(dir, "v" + str(highest_number + 1))
+    output_dir = os.path.join(dir, "v" + str(highest_number + 1))
+    print(f"Output Directory: {output_dir}")
+    return output_dir
+
+def str_to_tuple(s):
+    return tuple(map(int, s.split(',')))
 
 
 
 ### RENDERER
 
-# Initialise 
+def setup_renderer():
+    if (CFG["RENDER"]["renderer"] == "cycles"):
+        setup_cycles()
+    else:
+        setup_eevee()
+    res = str_to_tuple(CFG["RENDER"]["resolution"])
+    bpy.context.scene.render.resolution_x = res[0]
+    bpy.context.scene.render.resolution_y = res[1]
+
 def setup_eevee():
     bpy.context.scene.render.engine = 'BLENDER_EEVEE'
-    bpy.context.scene.render.resolution_x = image_resolution[0]
-    bpy.context.scene.render.resolution_y = image_resolution[1]
-
-# Initialise environment to use cycles correctly and quickly
+    
 def setup_cycles():
-    # configure render settings
     bpy.context.scene.render.engine = 'CYCLES'
-    bpy.context.scene.render.resolution_x = image_resolution[0]
-    bpy.context.scene.render.resolution_y = image_resolution[1]
-    bpy.context.scene.render.use_motion_blur = False
-
-    # configure cycles
     bpy.context.scene.cycles.samples = 256
     bpy.context.scene.cycles.device = "GPU"
     bpy.context.scene.cycles.max_bounces = 3
@@ -279,7 +263,7 @@ def setup_planes():
 def render_brick(brick_id, output_dir, img_per_brick):
     brick_dir = os.path.join(output_dir, str(brick_id))
     os.makedirs(brick_dir)
-    time_brick_start = time.time()
+    time_brick_start = time()
 
     # clear objects in the scene
     pop_by_type("EMPTY")
@@ -300,7 +284,7 @@ def render_brick(brick_id, output_dir, img_per_brick):
     # iterate per brick
     for i in range(img_per_brick):
         # timing
-        time_itr_start = time.time()
+        time_itr_start = time()
 
         # setup iteration dependant scene
         pop_by_type("LIGHT")
@@ -316,44 +300,82 @@ def render_brick(brick_id, output_dir, img_per_brick):
         # render to png
         output_path = brick_dir + "/" + brick_id + "_" + str(i) + ".png"
         render(output_path)
-        print("Render ", str(brick_id) + ".dat (", i, ") [",  time.time() - time_itr_start, "]:", output_path)
+        print("Render ", str(brick_id) + ".dat (", i, ") [",  time() - time_itr_start, "]:", output_path)
 
     # time total for brick
-    print("Finished Brick:", brick_id, "@", time.time() - time_brick_start, "s")
+    print("Finished Brick:", brick_id, "@", time() - time_brick_start, "s")
+    
 
 
-def run(part_ids, output_dir, img_per_brick):    
+def run(part_ids, output_dir, img_per_brick):
     os.makedirs(output_dir)
-    time_start = get_time_s()
+    time_start = time()
     
     # set renderer
-    setup_eevee()
+    setup_renderer()
     
-    time_prev = get_time_s()
+    time_prev = time()
     print("setup finished @ ", time_prev - time_start)
     for part_id in part_ids:
         render_brick(part_id, output_dir, img_per_brick)
         
-    print("All ", len(part_ids) * img_per_brick, " images rendered @ ", get_time_s() - time_start)
+    print("All ", len(part_ids) * img_per_brick, " images rendered @ ", time() - time_start)
 
-def main():
-    v_dir = get_next_version(DATA_DIR)
-    print("Dataset Version Dir:", v_dir)
+def generate_default_ini(path):
+    dini = configparser.ConfigParser()
+    dini["PATHS"] = {
+        "x": "incomplete"
+    }
+    with open(path, "w") as default_ini:
+        dini.write(default_ini)
     
-    valid_parts, invalid_parts = get_parts_and_check(COMMON_BRICKS_PATH, LDRAW_PARTS_DIR)
-    print("Valid:", valid_parts)
-    print("Invalid:", invalid_parts)
+def main():
+    global PWD, CFG
+    # PWD for Blender w/ GUI
+    try:
+        PWD = os.path.dirname(bpy.context.space_data.text.filepath)
+    except AttributeError as e:
+        PWD = os.getcwd()
+    
+    cfg_path = os.join(PWD, "config.ini")
+    if not os.path.exists(cfg_path):
+        generate_default_ini(cfg_path)
+    CFG = configparser.ConfigParser()
+    CFG.read(cfg_path)
+    
+    ldraw_path = CFG["PATHS"]["ldraw"]
+    ldraw_parts_path = os.path.join(ldraw_path, "parts")
+    output_path = CFG["PATHS"]["output"]
+    brickset_path = CFG["PATHS"]["brickset"]
+    
+    try:
+        if ldraw_path[0] != '/':
+            ldraw_path = os.path.join(PWD, ldraw_path)
+        if output_path[0] != '/':
+            output_path = os.path.join(PWD, output_path)
+        if brickset_path[0] != '/':
+            brickset_path = os.path.join(PWD, brickset_path)
+    except IndexError as e:
+        print("ERROR: Invalid path")
+        print(e)
+    
+    try:
+        v_dir = get_next_version(output_path)
+        valid_parts, invalid_parts = get_parts_and_check(brickset_path, ldraw_parts_path)
+        NUM_PARTS = 1
+        parts_subset = valid_parts[:NUM_PARTS]
 
-    NUM_PARTS = 10
-    parts_subset = valid_parts[:NUM_PARTS]
-
-    run(part_ids=parts_subset, output_dir=v_dir, img_per_brick=40)
+        run(part_ids=parts_subset, output_dir=v_dir, img_per_brick=1)
+    except Exception as e:
+        print("ERROR: app failed")
+        print(e)
+        
+        
 
 if __name__ == "__main__":
     print(f"Blender {bpy.app.version_string}")
     if (3, 6, 9) == bpy.app.version:
-        #main()
-        pass
+        main()
     else:
         print("ERROR: Unsupported Blender Version, use LTS 3.6.9")
     

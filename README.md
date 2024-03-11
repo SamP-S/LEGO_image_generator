@@ -1,4 +1,5 @@
 # LEGO Brick Image Dataset Generator
+This project aims to provide blender scripts that can be used to generate large datasets of synthetic images of LEGO bricks.
 
 ## Requirements
 - [Blender 3.6.9](https://www.blender.org/download/lts/3-6/)
