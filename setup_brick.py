@@ -9,7 +9,11 @@ from math import radians, sin, cos
 
 ### Environment Variables
 
-PWD = os.path.dirname(bpy.context.space_data.text.filepath)
+# PWD for Blender w/ GUI
+try:
+    PWD = os.path.dirname(bpy.context.space_data.text.filepath)
+except AttributeError as e:
+    PWD = os.getcwd()
 
 COMMON_BRICKS_PATH = os.path.join(PWD, "20bricks.txt")
 
@@ -346,9 +350,10 @@ def main():
     run(part_ids=parts_subset, output_dir=v_dir, img_per_brick=40)
 
 if __name__ == "__main__":
-    print(bpy.app.version_string)
-    if (3, 6, 9) == bpy.app.version_string:
-        main()
+    print(f"Blender {bpy.app.version_string}")
+    if (3, 6, 9) == bpy.app.version:
+        #main()
+        pass
     else:
         print("ERROR: Unsupported Blender Version, use LTS 3.6.9")
     
