@@ -332,7 +332,7 @@ def run(part_ids, output_dir, img_per_brick):
         
     print("All ", len(part_ids) * img_per_brick, " images rendered @ ", get_time_s() - time_start)
 
-if __name__ == "__main__":
+def main():
     v_dir = get_next_version(DATA_DIR)
     print("Dataset Version Dir:", v_dir)
     
@@ -344,3 +344,11 @@ if __name__ == "__main__":
     parts_subset = valid_parts[:NUM_PARTS]
 
     run(part_ids=parts_subset, output_dir=v_dir, img_per_brick=40)
+
+if __name__ == "__main__":
+    print(bpy.app.version_string)
+    if (3, 6, 9) == bpy.app.version_string:
+        main()
+    else:
+        print("ERROR: Unsupported Blender Version, use LTS 3.6.9")
+    
