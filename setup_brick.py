@@ -120,43 +120,28 @@ def get_parts(bricks_path):
 def get_ldraw_parts(ldraw_dir):
     ldraw_files = os.listdir(ldraw_dir)
     file_names = [os.path.splitext(file)[0] for file in ldraw_files]
-    return file_names
-
-# compare and prints stats
-def get_parts_and_check(bricks_path, ldraw_dir):
-    print("Brick File:", bricks_path)
-    print("LDraw Dir:", ldraw_dir)
-    parts = get_parts(bricks_path)
-    ldraw_parts = get_ldraw_parts(ldraw_dir)
-    valid_parts = [line for idx,line in enumerate(parts) if line in ldraw_parts]
-    invalid_parts = [line for idx,line in enumerate(parts) if line not in ldraw_parts]
-    print(parts[:15])
-    print(ldraw_parts[:15])
-    print("Total parts:", len(parts))
-    print("Total ldraw parts:", len(ldraw_parts))
-    print("Total valid:", len(valid_parts))
-    print("Total invalid:", len(invalid_parts))
-    return valid_parts, invalid_parts
-    
+    return file_names 
 
 # import .dat model by part id, simple look up
 # MORE HANDLING NEEDED
 def import_lego_part(part_id):
     global CFG
     part_file = os.path.join(CFG["PATHS"]["ldraw"], "parts", str(part_id) + ".dat")
-    bpy.ops.import_scene.importldraw(   filepath=part_file,
-                                        filter_glob="*.dat",
-                                        ldrawPath=CFG["PATHS"]["ldraw"],
-                                        useLogoStuds=True,
-                                        instanceStuds=False,
-                                        importCameras=False,
-                                        cameraBorderPercentage=30.0,
-                                        addEnvironment=False,
-                                        numberNodes=False,
-                                        flatten=False,
-                                        bevelEdges=True,
-                                        smoothParts=True,
-                                        curvedWalls=True)
+    bpy.ops.import_scene.importldraw(  
+        filepath=part_file,
+        filter_glob="*.dat",
+        ldrawPath=CFG["PATHS"]["ldraw"],
+        useLogoStuds=True,
+        instanceStuds=False,
+        importCameras=False,
+        cameraBorderPercentage=30.0,
+        addEnvironment=False,
+        numberNodes=False,
+        flatten=False,
+        bevelEdges=True,
+        smoothParts=True,
+        curvedWalls=True
+    )
     return bpy.context.selected_objects[0]
 
 # set object's position
@@ -308,10 +293,13 @@ def render_brick(brick_id, output_dir, img_per_brick):
     # time total for brick
     print("Finished Brick:", brick_id, "@", time() - time_brick_start, "s")
     
-
+    
+### MAIN DRIVER CODE
 
 def run(part_ids, output_dir, img_per_brick):
-    os.makedirs(output_dir)
+    global PARTS, OUTPUT_DIR
+    
+    
     time_start = time()
     
     # set renderer
@@ -319,7 +307,7 @@ def run(part_ids, output_dir, img_per_brick):
     
     time_prev = time()
     print("setup finished @ ", time_prev - time_start)
-    for part_id in part_ids:
+    for part_id in PARTS:
         render_brick(part_id, output_dir, img_per_brick)
         
     print("All ", len(part_ids) * img_per_brick, " images rendered @ ", time() - time_start)
@@ -331,15 +319,7 @@ def save_config(path):
     }
     with open(path, "w") as default_ini:
         dini.write(default_ini)
-        
-def load_config(path):
-    global CFG
-    if not os.path.exists(path):
-        print(f"WARNING: Could not find config file @ {path}")
-        save_config(path)
-    CFG = configparser.ConfigParser()
-    CFG.read(path)
-    
+
 def load_cwd():
     global PWD
     try:
@@ -347,27 +327,46 @@ def load_cwd():
     except AttributeError as e:
         PWD = os.getcwd()
 
+def load_config(path):
+    global CFG
+    if not os.path.exists(path):
+        print(f"WARNING: Could not find config file @ {path}")
+        save_config(path)
+    CFG = configparser.ConfigParser()
+    CFG.read(path)
+
 def load_brickset():
     global PARTS
-    v_dir = get_next_version(output_path)
-    valid_parts, invalid_parts = get_parts_and_check(brickset_path, ldraw_parts_path)
-    NUM_PARTS = int(CFG[""][""])
-    PARTS = valid_parts[:NUM_PARTS]
+    ldraw_dir = CFG["PATHS"]["ldraw"]
+    brickset_path = CFG["PATHS"]["brickset"]
+    parts = get_parts(brickset_path)
+    ldraw_parts = get_ldraw_parts(ldraw_dir)
+    valid_parts = [line for idx,line in enumerate(parts) if line in ldraw_parts]
+    invalid_parts = [line for idx,line in enumerate(parts) if line not in ldraw_parts]
+    num_parts = int(CFG["GENERAL"]["num_bricks"])
+    offset_parts = int(CFG["GENERAL"]["offset_bricks"])
+    PARTS = valid_parts[offset_parts:num_parts+offset_parts]
+    # debug
+    print("Brickset File:", brickset_path)
+    print("LDraw Dir:", ldraw_dir)
+    print("Total parts:", len(parts))
+    print("Total ldraw parts:", len(ldraw_parts))
+    print("Total valid:", len(valid_parts))
+    print("Total invalid:", len(invalid_parts))
+
+def load_output():
+    global OUTPUT_DIR
+    OUTPUT_PATH = get_next_version(CFG["PATHS"]["output"])
+    if not os.path.exists(OUTPUT_DIR):
+        os.mkdir(OUTPUT_DIR)
     
 def main():
     load_cwd()
     load_config(os.path.join(PWD, "config.ini"))
     load_brickset()
-    
-    
-    ldraw_path = CFG["PATHS"]["ldraw"]
-    output_path = CFG["PATHS"]["output"]
-    brickset_path = CFG["PATHS"]["brickset"]
-
-    run(part_ids=parts_subset, output_dir=v_dir, img_per_brick=1)
+    load_output()
+    run()
         
-        
-
 if __name__ == "__main__":
     print(f"Blender {bpy.app.version_string}")
     if (3, 6, 9) == bpy.app.version:
