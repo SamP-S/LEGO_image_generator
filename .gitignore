@@ -1,7 +1,7 @@
 # Custom Dirs
 output/
 backgrounds/
-data/
+data
 ldraw/
 
 # Byte-compiled / optimized / DLL files

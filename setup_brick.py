@@ -107,11 +107,13 @@ def setup_lights():
 # open csv of brick ids
 def get_parts(bricks_path):
     print("Using Bricks File:", bricks_path)
-    arr = []
-    with open(bricks_path) as f:
-        reader = csv.reader(f)
-        for row in reader:
-            arr.append(row[1].strip())
+    arr = [3001]
+    try:
+        with open(bricks_path) as f:
+            arr = [l.strip() for l in f]
+    except Exception as e:
+        print(f"ERROR: Could not open @ {bricks_path}")
+        print(e)
     return arr
 
 # get ldraw supported parts
@@ -140,10 +142,11 @@ def get_parts_and_check(bricks_path, ldraw_dir):
 # import .dat model by part id, simple look up
 # MORE HANDLING NEEDED
 def import_lego_part(part_id):
-    part_file = LDRAW_PARTS_DIR + "/" + str(part_id) + ".dat"
+    global CFG
+    part_file = os.path.join(CFG["PATHS"]["ldraw"], "parts", str(part_id) + ".dat")
     bpy.ops.import_scene.importldraw(   filepath=part_file,
                                         filter_glob="*.dat",
-                                        ldrawPath=LDRAW_ROOT_DIR,
+                                        ldrawPath=CFG["PATHS"]["ldraw"],
                                         useLogoStuds=True,
                                         instanceStuds=False,
                                         importCameras=False,
@@ -165,7 +168,7 @@ def set_rotation(obj, x, y, z):
 # set object's scale
 def set_scale(obj, x, y, z):
     obj.scale = (x, y, z)
-
+    
 def setup_part(part):
     # Randomize the rotation of the part
     x = r.uniform(0, 2*3.14159)
@@ -321,54 +324,47 @@ def run(part_ids, output_dir, img_per_brick):
         
     print("All ", len(part_ids) * img_per_brick, " images rendered @ ", time() - time_start)
 
-def generate_default_ini(path):
+def save_config(path):
     dini = configparser.ConfigParser()
     dini["PATHS"] = {
         "x": "incomplete"
     }
     with open(path, "w") as default_ini:
         dini.write(default_ini)
+        
+def load_config(path):
+    global CFG
+    if not os.path.exists(path):
+        print(f"WARNING: Could not find config file @ {path}")
+        save_config(path)
+    CFG = configparser.ConfigParser()
+    CFG.read(path)
     
-def main():
-    global PWD, CFG
-    # PWD for Blender w/ GUI
+def load_cwd():
+    global PWD
     try:
         PWD = os.path.dirname(bpy.context.space_data.text.filepath)
     except AttributeError as e:
         PWD = os.getcwd()
+
+def load_brickset():
+    global PARTS
+    v_dir = get_next_version(output_path)
+    valid_parts, invalid_parts = get_parts_and_check(brickset_path, ldraw_parts_path)
+    NUM_PARTS = int(CFG[""][""])
+    PARTS = valid_parts[:NUM_PARTS]
     
-    cfg_path = os.join(PWD, "config.ini")
-    if not os.path.exists(cfg_path):
-        generate_default_ini(cfg_path)
-    CFG = configparser.ConfigParser()
-    CFG.read(cfg_path)
+def main():
+    load_cwd()
+    load_config(os.path.join(PWD, "config.ini"))
+    load_brickset()
+    
     
     ldraw_path = CFG["PATHS"]["ldraw"]
-    ldraw_parts_path = os.path.join(ldraw_path, "parts")
     output_path = CFG["PATHS"]["output"]
     brickset_path = CFG["PATHS"]["brickset"]
-    
-    try:
-        if ldraw_path[0] != '/':
-            ldraw_path = os.path.join(PWD, ldraw_path)
-        if output_path[0] != '/':
-            output_path = os.path.join(PWD, output_path)
-        if brickset_path[0] != '/':
-            brickset_path = os.path.join(PWD, brickset_path)
-    except IndexError as e:
-        print("ERROR: Invalid path")
-        print(e)
-    
-    try:
-        v_dir = get_next_version(output_path)
-        valid_parts, invalid_parts = get_parts_and_check(brickset_path, ldraw_parts_path)
-        NUM_PARTS = 1
-        parts_subset = valid_parts[:NUM_PARTS]
 
-        run(part_ids=parts_subset, output_dir=v_dir, img_per_brick=1)
-    except Exception as e:
-        print("ERROR: app failed")
-        print(e)
+    run(part_ids=parts_subset, output_dir=v_dir, img_per_brick=1)
         
         
 
