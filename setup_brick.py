@@ -118,7 +118,8 @@ def get_parts(bricks_path):
 
 # get ldraw supported parts
 def get_ldraw_parts(ldraw_dir):
-    ldraw_files = os.listdir(ldraw_dir)
+    ldraw_parts_dir = os.path.join(ldraw_dir, "parts")
+    ldraw_files = os.listdir(ldraw_parts_dir)
     file_names = [os.path.splitext(file)[0] for file in ldraw_files]
     return file_names 
 
@@ -248,7 +249,7 @@ def setup_planes():
 
 ### Main Function
        
-def render_brick(brick_id, output_dir, img_per_brick):
+def render_brick(brick_id, output_dir):
     brick_dir = os.path.join(output_dir, str(brick_id))
     os.makedirs(brick_dir)
     time_brick_start = time()
@@ -269,48 +270,52 @@ def render_brick(brick_id, output_dir, img_per_brick):
     setup_planes()
     mat = create_material("new_mat")
     
-    # iterate per brick
-    for i in range(img_per_brick):
-        # timing
-        time_itr_start = time()
-
-        # setup iteration dependant scene
+    colours_per_brick = int(CFG["GENERAL"]["colours_per_brick"])
+    rotations_per_colour = int(CFG["GENERAL"]["rotations_per_colour"])
+    
+    # iterate each colour
+    for i in range(colours_per_brick):
+        
+        # lighting
         pop_by_type("LIGHT")
         clear_lights()
         setup_lights()
-        setup_part(part)
+        
+        # material
         set_random_material_properties(mat)
         set_object_material(part, mat)
-        part.select_set(state=True)
-        bpy.context.view_layer.objects.active = part
-        bpy.ops.view3d.camera_to_view_selected()
+        
+        for j in range(rotations_per_colour):
+            time_itr_start = time()
+            setup_part(part)
+            part.select_set(state=True)
+            bpy.context.view_layer.objects.active = part
+            bpy.ops.view3d.camera_to_view_selected()
 
-        # render to png
-        output_path = brick_dir + "/" + brick_id + "_" + str(i) + ".png"
-        render(output_path)
-        print("Render ", str(brick_id) + ".dat (", i, ") [",  time() - time_itr_start, "]:", output_path)
-
-    # time total for brick
+            # render to png
+            output_path = os.path.join(brick_dir, brick_id + "_" + str(i) + ".png")
+            render(output_path)
+            print("Render ", str(brick_id) + ".dat (", i, ") [",  time() - time_itr_start, "]:", output_path)
     print("Finished Brick:", brick_id, "@", time() - time_brick_start, "s")
-    
+
+def get_total_images():
+    num_bricks = int(CFG["GENERAL"]["num_bricks"])
+    colours_per_brick = int(CFG["GENERAL"]["colours_per_brick"])
+    rotations_per_colour = int(CFG["GENERAL"]["rotations_per_colour"])
+    return num_bricks * colours_per_brick * rotations_per_colour
     
 ### MAIN DRIVER CODE
 
-def run(part_ids, output_dir, img_per_brick):
+def run():
     global PARTS, OUTPUT_DIR
-    
-    
     time_start = time()
-    
-    # set renderer
     setup_renderer()
-    
-    time_prev = time()
-    print("setup finished @ ", time_prev - time_start)
+    print("setup finished @ ", time() - time_start)
+    time_start = time()
     for part_id in PARTS:
-        render_brick(part_id, output_dir, img_per_brick)
-        
-    print("All ", len(part_ids) * img_per_brick, " images rendered @ ", time() - time_start)
+        print(f"rendering: {part_id}")
+        render_brick(part_id, OUTPUT_DIR)
+    print(f"All {get_total_images()} images rendered @ {time() - time_start}")
 
 def save_config(path):
     dini = configparser.ConfigParser()
@@ -356,7 +361,7 @@ def load_brickset():
 
 def load_output():
     global OUTPUT_DIR
-    OUTPUT_PATH = get_next_version(CFG["PATHS"]["output"])
+    OUTPUT_DIR = get_next_version(CFG["PATHS"]["output"])
     if not os.path.exists(OUTPUT_DIR):
         os.mkdir(OUTPUT_DIR)
     
