@@ -41,7 +41,7 @@ def str_to_tuple(s):
 ### RENDERER
 
 def setup_renderer():
-    if (CFG["RENDER"]["renderer"] == "cycles"):
+    if CFG["RENDER"]["renderer"] == "cycles":
         setup_cycles()
     else:
         setup_eevee()
@@ -50,10 +50,12 @@ def setup_renderer():
     bpy.context.scene.render.resolution_y = res[1]
 
 def setup_eevee():
-    bpy.context.scene.render.engine = 'BLENDER_EEVEE'
+    print("Renderer: EEVEE")
+    bpy.context.scene.render.engine = "BLENDER_EEVEE"
     
 def setup_cycles():
-    bpy.context.scene.render.engine = 'CYCLES'
+    print("Renderer: CYCLES")
+    bpy.context.scene.render.engine = "CYCLES"
     bpy.context.scene.cycles.samples = 256
     bpy.context.scene.cycles.device = "GPU"
     bpy.context.scene.cycles.max_bounces = 3
@@ -287,9 +289,13 @@ def render_brick(brick_id, output_dir):
         
         for j in range(rotations_per_colour):
             time_itr_start = time()
+            
+            # rotation
             setup_part(part)
             part.select_set(state=True)
             bpy.context.view_layer.objects.active = part
+            
+            # camera centering
             bpy.ops.view3d.camera_to_view_selected()
 
             # render to png
