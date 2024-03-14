@@ -156,14 +156,16 @@ def set_rotation(obj, x, y, z):
 # set object's scale
 def set_scale(obj, x, y, z):
     obj.scale = (x, y, z)
-    
-def setup_part(part):
-    # Randomize the rotation of the part
+
+# Randomize the rotation of the part
+def setup_part_random(part):   
     x = r.uniform(0, 2*3.14159)
     y = r.uniform(0, 2*3.14159)
     z = r.uniform(0, 2*3.14159)
     set_rotation(part, x, y, z)
 
+def setup_part_uniform(part):
+    pass
 
 
 ### MATERIAL
@@ -190,11 +192,24 @@ def set_material_properties(mat, diffuse, metallic, specular, roughness):
 
 # Set random colour/settings of material
 def set_random_material_properties(mat):
-    diff = (r.uniform(0.0, 1.0), r.uniform(0.0, 1.0), r.uniform(0.0, 1.0), 1.0)
-    metallic = r.uniform(0.0, 1.0)
-    specular = r.uniform(0.0, 1.0)
-    roughness = r.uniform(0.0, 1.0)
-    return set_material_properties(mat, diff, metallic, specular, roughness)
+    diffuse_min = str_to_tuple(CFG["GENERAL"]["diffuse_min"])
+    diffuse_max = str_to_tuple(CFG["GENERAL"]["diffuse_max"])
+    diffuse = (
+        r.uniform(diffuse_min[0], diffuse_max[0]),
+        r.uniform(diffuse_min[1], diffuse_max[1]),
+        r.uniform(diffuse_min[2], diffuse_max[2]),
+        1.0
+    )
+    metallic_min = float(CFG["GENERAL"]["metallic_min"])
+    metallic_max = float(CFG["GENERAL"]["metallic_max"])
+    metallic = r.uniform(metallic_min, metallic_max)
+    specular_min = float(CFG["GENERAL"]["specular_min"])
+    specular_max = float(CFG["GENERAL"]["specular_max"])
+    specular = r.uniform(specular_min, specular_max)
+    roughness_min = float(CFG["GENERAL"]["roughness_min"])
+    roughness_max = float(CFG["GENERAL"]["roughness_max"])
+    roughness = r.uniform(roughness_min, roughness_max)
+    return set_material_properties(mat, diffuse, metallic, specular, roughness)
 
 # create new dffuse material of specified r,g,b and set as object material
 def set_object_material(obj, mat):
@@ -291,7 +306,8 @@ def render_brick(brick_id, output_dir):
             time_itr_start = time()
             
             # rotation
-            setup_part(part)
+            setup_part_random(part)
+            
             part.select_set(state=True)
             bpy.context.view_layer.objects.active = part
             
@@ -354,9 +370,12 @@ def load_brickset():
     ldraw_parts = get_ldraw_parts(ldraw_dir)
     valid_parts = [line for idx,line in enumerate(parts) if line in ldraw_parts]
     invalid_parts = [line for idx,line in enumerate(parts) if line not in ldraw_parts]
-    num_parts = int(CFG["GENERAL"]["num_bricks"])
-    offset_parts = int(CFG["GENERAL"]["offset_bricks"])
-    PARTS = valid_parts[offset_parts:num_parts+offset_parts]
+    # use subset
+    PARTS = valid_parts
+    if int(CFG["GENERAL"]["use_subset"]):
+        num_parts = int(CFG["GENERAL"]["num_bricks"])
+        offset_parts = int(CFG["GENERAL"]["offset_bricks"])
+        PARTS = valid_parts[offset_parts:num_parts+offset_parts]
     # debug
     print("Brickset File:", brickset_path)
     print("LDraw Dir:", ldraw_dir)
@@ -364,6 +383,7 @@ def load_brickset():
     print("Total ldraw parts:", len(ldraw_parts))
     print("Total valid:", len(valid_parts))
     print("Total invalid:", len(invalid_parts))
+    print("Invalid parts:", invalid_parts)
 
 def load_output():
     global OUTPUT_DIR
@@ -376,7 +396,7 @@ def main():
     load_config(os.path.join(PWD, "config.ini"))
     load_brickset()
     load_output()
-    run()
+    # run()
         
 if __name__ == "__main__":
     print(f"Blender {bpy.app.version_string}")

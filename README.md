@@ -6,6 +6,14 @@ This project aims to provide blender scripts that can be used to generate large 
 - [LDraw Importer (1.1.16)](https://github.com/TobyLobster/ImportLDraw/releases/tag/v1.1.16) 
 - [LDraw Library (2024-01)](https://ldraw.org/)
 
+## Usage
+```
+    cd <project_directory>
+    ./run.sh
+    # or run through blender scripting workspace
+    blender
+```
+
 ## Features
 - [x] Support ldraw .dat bricks 
 - [x] Import brick
@@ -22,5 +30,5 @@ This project aims to provide blender scripts that can be used to generate large 
 - [x] Clean up scene when possible
 - [x] Free unused data
 - [x] Run script
-- [ ] Load config from ini
+- [x] Load config from ini
 
