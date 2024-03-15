@@ -50,6 +50,9 @@ def setup_renderer():
     res = str_to_int_tuple(CFG["RENDER"]["resolution"])
     bpy.context.scene.render.resolution_x = res[0]
     bpy.context.scene.render.resolution_y = res[1]
+    
+    # set black background
+    bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = (0.0, 0.0, 0.0, 0.0)
 
 def setup_eevee():
     print("Renderer: EEVEE")
@@ -67,7 +70,6 @@ def setup_cycles():
 def render(filepath):
     bpy.context.scene.render.filepath = filepath
     bpy.ops.render.render(write_still=True)
-
 
 
 ### LIGHTING
@@ -103,7 +105,6 @@ def setup_lights():
         angle_h = radians(360 * r.random())
         angle_v = radians(90 * r.random())
         set_position_polar_coords(light, radius, angle_h, angle_v)    
-
 
 
 ### OBJ
@@ -165,9 +166,6 @@ def setup_part_random(part):
     y = r.uniform(0, 2*3.14159)
     z = r.uniform(0, 2*3.14159)
     set_rotation(part, x, y, z)
-
-def setup_part_uniform(part):
-    pass
 
 
 ### MATERIAL
@@ -292,20 +290,20 @@ def render_brick(brick_id, output_dir):
     print("import part:", brick_id)
     part = import_lego_part(brick_id)
     setup_planes()
+    mat = create_material(f"new_mat")
     
     colours_per_brick = int(CFG["GENERAL"]["colours_per_brick"])
     rotations_per_colour = int(CFG["GENERAL"]["rotations_per_colour"])
     
     # iterate each colour
     for i in range(colours_per_brick):
-        
+    
         # lighting
         pop_by_type("LIGHT")
         clear_lights()
         setup_lights()
         
         # material
-        mat = create_material(f"new_mat_{i}")
         set_random_material_properties(mat)
         set_object_material(part, mat)
         
