@@ -33,9 +33,11 @@ def get_next_version(dir):
     print(f"Output Directory: {output_dir}")
     return output_dir
 
-def str_to_tuple(s):
+def str_to_int_tuple(s):
     return tuple(map(int, s.split(',')))
 
+def str_to_float_tuple(s):
+    return tuple(map(float, s.split(',')))
 
 
 ### RENDERER
@@ -45,7 +47,7 @@ def setup_renderer():
         setup_cycles()
     else:
         setup_eevee()
-    res = str_to_tuple(CFG["RENDER"]["resolution"])
+    res = str_to_int_tuple(CFG["RENDER"]["resolution"])
     bpy.context.scene.render.resolution_x = res[0]
     bpy.context.scene.render.resolution_y = res[1]
 
@@ -192,8 +194,8 @@ def set_material_properties(mat, diffuse, metallic, specular, roughness):
 
 # Set random colour/settings of material
 def set_random_material_properties(mat):
-    diffuse_min = str_to_tuple(CFG["GENERAL"]["diffuse_min"])
-    diffuse_max = str_to_tuple(CFG["GENERAL"]["diffuse_max"])
+    diffuse_min = str_to_float_tuple(CFG["GENERAL"]["diffuse_min"])
+    diffuse_max = str_to_float_tuple(CFG["GENERAL"]["diffuse_max"])
     diffuse = (
         r.uniform(diffuse_min[0], diffuse_max[0]),
         r.uniform(diffuse_min[1], diffuse_max[1]),
@@ -209,6 +211,11 @@ def set_random_material_properties(mat):
     roughness_min = float(CFG["GENERAL"]["roughness_min"])
     roughness_max = float(CFG["GENERAL"]["roughness_max"])
     roughness = r.uniform(roughness_min, roughness_max)
+    print("material:")
+    print(f"\tdiffuse = ({diffuse[0]}, {diffuse[1]}, {diffuse[2]})")
+    print(f"\tmetallic = {metallic}")
+    print(f"\tspecular = {specular}")
+    print(f"\troughness = {roughness}")
     return set_material_properties(mat, diffuse, metallic, specular, roughness)
 
 # create new dffuse material of specified r,g,b and set as object material
@@ -285,7 +292,6 @@ def render_brick(brick_id, output_dir):
     print("import part:", brick_id)
     part = import_lego_part(brick_id)
     setup_planes()
-    mat = create_material("new_mat")
     
     colours_per_brick = int(CFG["GENERAL"]["colours_per_brick"])
     rotations_per_colour = int(CFG["GENERAL"]["rotations_per_colour"])
@@ -299,6 +305,7 @@ def render_brick(brick_id, output_dir):
         setup_lights()
         
         # material
+        mat = create_material(f"new_mat_{i}")
         set_random_material_properties(mat)
         set_object_material(part, mat)
         
