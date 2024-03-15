@@ -7,6 +7,7 @@ import csv
 import configparser
 from math import radians, sin, cos, pi
 
+renderer = bpy.data.scenes["Scene"].render.engine
 
 # convert angles
 def deg_to_rad(angle):
@@ -48,11 +49,13 @@ def setup_renderer():
     else:
         setup_eevee()
     res = str_to_int_tuple(CFG["RENDER"]["resolution"])
+    
     bpy.context.scene.render.resolution_x = res[0]
     bpy.context.scene.render.resolution_y = res[1]
     
     # set black background
-    bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = (0.0, 0.0, 0.0, 0.0)
+    bg = str_to_float_tuple(CFG["RENDER"]["background"])
+    bpy.data.worlds["World"].node_tree.nodes["Background"].inputs[0].default_value = bg
 
 def setup_eevee():
     print("Renderer: EEVEE")
@@ -92,13 +95,15 @@ def set_position_polar_coords(obj, radius, angle_h, angle_v):
     return (x, y, z)
 
 def setup_lights():
-    MAX_LIGHTS = 3 
-    MIN_STRENGTH = 500
-    MAX_STRENGTH = 2000
-    MIN_RADIUS = 3
-    MAX_RADIUS = 10
+    global CFG
+    MIN_LIGHTS = int(CFG["LIGHTING"]["num_min"])
+    MAX_LIGHTS = int(CFG["LIGHTING"]["num_max"])
+    MIN_STRENGTH = int(CFG["LIGHTING"]["strength_min"])
+    MAX_STRENGTH = int(CFG["LIGHTING"]["strength_max"])
+    MIN_RADIUS = int(CFG["LIGHTING"]["radius_min"])
+    MAX_RADIUS = int(CFG["LIGHTING"]["radius_max"])
 
-    for l in range(r.randint(1, MAX_LIGHTS)):
+    for l in range(r.randint(MIN_LIGHTS, MAX_LIGHTS)):
         strength = r.randint(MIN_STRENGTH, MAX_STRENGTH)
         light = create_point_light((0, 0, 0), strength)
         radius = r.randint(MIN_RADIUS, MAX_RADIUS)
@@ -289,6 +294,7 @@ def render_brick(brick_id, output_dir):
     # setup iteration independant scene
     print("import part:", brick_id)
     part = import_lego_part(brick_id)
+    setup_renderer()
     setup_planes()
     mat = create_material(f"new_mat")
     
@@ -332,17 +338,6 @@ def get_total_images():
     return num_bricks * colours_per_brick * rotations_per_colour
     
 ### MAIN DRIVER CODE
-
-def run():
-    global PARTS, OUTPUT_DIR
-    time_start = time()
-    setup_renderer()
-    print("setup finished @ ", time() - time_start)
-    time_start = time()
-    for part_id in PARTS:
-        print(f"rendering: {part_id}")
-        render_brick(part_id, OUTPUT_DIR)
-    print(f"All {get_total_images()} images rendered @ {time() - time_start}")
 
 def save_config(path):
     dini = configparser.ConfigParser()
@@ -395,6 +390,18 @@ def load_output():
     OUTPUT_DIR = get_next_version(CFG["PATHS"]["output"])
     if not os.path.exists(OUTPUT_DIR):
         os.mkdir(OUTPUT_DIR)
+
+def run():
+    global PARTS, OUTPUT_DIR
+    time_start = time()
+    print("setup finished @ ", time() - time_start)
+    time_start = time()
+    for part_id in PARTS:
+        print(f"rendering: {part_id}")
+        render_brick(part_id, OUTPUT_DIR)
+    print(f"Using: {bpy.data.scenes['Scene'].render.engine}")
+    print(f"All {get_total_images()} images rendered @ {time() - time_start}")
+
     
 def main():
     load_cwd()
