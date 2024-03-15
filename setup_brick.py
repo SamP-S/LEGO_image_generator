@@ -396,7 +396,7 @@ def main():
     load_config(os.path.join(PWD, "config.ini"))
     load_brickset()
     load_output()
-    # run()
+    run()
         
 if __name__ == "__main__":
     print(f"Blender {bpy.app.version_string}")
